@@ -6,11 +6,12 @@ const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
-const sharp = require('sharp');  // Add sharp for image resizing
+const sharp = require('sharp');
+const os = require('os');
 require('dotenv').config();
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 // Set ffmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -19,12 +20,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 app.use(cors());
 
 // Set up Multer for video uploads
-const storage = multer.diskStorage({
-  destination: './uploads/',
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  }
-});
+const storage = multer.memoryStorage(); // Use memory storage for uploads
 const upload = multer({ storage: storage });
 
 // Initialize AWS Rekognition
@@ -34,20 +30,32 @@ const rekognition = new AWS.Rekognition({
 
 // Route to upload a video
 app.post('/upload', upload.single('video'), async (req, res) => {
-  const videoPath = path.join(__dirname, 'uploads', req.file.filename);
-  console.log(`Video uploaded: ${videoPath}`); // Log the video path
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'No file uploaded' });
+  }
+
+  const videoBuffer = req.file.buffer;
+  console.log(`Video uploaded: ${req.file.originalname}`); // Log the video name
 
   try {
-    // Set image path for the extracted frame
-    const outputFolder = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(outputFolder)) fs.mkdirSync(outputFolder);
+    // Create a temporary directory for processing
+    const tempDir = path.join(os.tmpdir(), 'uploads');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    const videoPath = path.join(tempDir, req.file.originalname);
     
-    // Use ffmpeg to extract multiple frames from the uploaded video
-    await extractFrames(videoPath, outputFolder);
+    // Save the video temporarily
+    fs.writeFileSync(videoPath, videoBuffer);
+
+    // Use ffmpeg to extract frames from the uploaded video
+    await extractFrames(videoPath, tempDir);
 
     // Analyze all extracted frames for PPE detection
-    const ppeData = await analyzePPEInFrames(outputFolder);
+    const ppeData = await analyzePPEInFrames(tempDir);
     
+    // Cleanup: Remove the temporary video file
+    fs.unlinkSync(videoPath);
+
     // Return PPE detection result
     res.json({ success: true, ppeData });
   } catch (error) {
@@ -101,7 +109,6 @@ const analyzePPEInFrames = async (folderPath) => {
 const resizeAndCompressImage = async (imagePath) => {
   let resizedImageBuffer;
   
-  // Resize the image to width 1280px, keeping aspect ratio
   try {
     resizedImageBuffer = await sharp(imagePath)
       .resize({ width: 1280 })  // Resize image width to 1280px (adjust as needed)
@@ -126,7 +133,7 @@ const resizeAndCompressImage = async (imagePath) => {
   return resizedImageBuffer;
 };
 
-//fUNCTION FOR ANALYZING PPE
+// Function for analyzing PPE
 const analyzePPEInImage = async (imageBuffer) => {
   const params = {
     Image: {
@@ -135,7 +142,6 @@ const analyzePPEInImage = async (imageBuffer) => {
   };
 
   try {
-    // Get full response from Rekognition
     const ppeResult = await rekognition.detectProtectiveEquipment(params).promise();
     console.log("Full PPE detection result:", JSON.stringify(ppeResult, null, 2)); // Log full result
 
@@ -145,72 +151,30 @@ const analyzePPEInImage = async (imageBuffer) => {
     persons.forEach((person, index) => {
       const personID = index;
 
-      // Face detection check
+      // Extract detection results
       const faceDetected = person.BodyParts.some(bp => bp.Name === 'FACE');
       const faceMaskDetected = person.BodyParts
         .filter(bp => bp.Name === 'FACE')
         .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'FACE_COVER'));
 
-      // Head detection and helmet detection (head cover check)
       const headDetected = person.BodyParts.some(bp => bp.Name === 'HEAD');
       const headCoverDetected = person.BodyParts
         .filter(bp => bp.Name === 'HEAD')
         .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'HEAD_COVER'));
 
-      // Protective vest detection (body protection)
       const bodyDetected = person.BodyParts.some(bp => bp.Name === 'BODY');
       const protectiveVestDetected = person.BodyParts
         .filter(bp => bp.Name === 'BODY')
         .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'BODY_COVER'));
 
-      // Extract head detection confidence
-      const headDetectedConfidence = person.BodyParts
-        .filter(bp => bp.Name === 'HEAD')
-        .map(bp => bp.Confidence)[0];
-
-      // Extract head cover confidence
-      const headCoverConfidence = person.BodyParts
-        .filter(bp => bp.Name === 'HEAD')
-        .map(bp => bp.EquipmentDetections[0]?.Confidence)[0];
-
-      // Extract face mask confidence
-      const faceMaskConfidence = person.BodyParts
-        .filter(bp => bp.Name === 'FACE')
-        .map(bp => bp.EquipmentDetections[0]?.Confidence)[0];
-
-      // Extract protective vest confidence
-      const protectiveVestConfidence = person.BodyParts
-        .filter(bp => bp.Name === 'BODY')
-        .map(bp => bp.EquipmentDetections[0]?.Confidence)[0];
-
-      // Detect hands (left and right)
-      const leftHandDetected = person.BodyParts.some(bp => bp.Name === 'LEFT_HAND');
-      const leftHandCoverDetected = person.BodyParts
-        .filter(bp => bp.Name === 'LEFT_HAND')
-        .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'HAND_COVER'));
-
-      const rightHandDetected = person.BodyParts.some(bp => bp.Name === 'RIGHT_HAND');
-      const rightHandCoverDetected = person.BodyParts
-        .filter(bp => bp.Name === 'RIGHT_HAND')
-        .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'HAND_COVER'));
-
-      // Construct person result object
       const personResult = {
         'Person ID': personID,
         'Person detected': (person.Confidence || 0).toFixed(2) + '%',
         'Face detected': faceDetected ? 'true' : 'false',
         'Face mask detected': faceMaskDetected ? 'true' : 'false',
-        'Face mask detection confidence': faceMaskConfidence ? faceMaskConfidence.toFixed(2) + '%' : 'N/A',
         'Head detected': headDetected ? 'true' : 'false',
         'Helmet detected': headCoverDetected ? 'true' : 'false',
-        'Head detection confidence': headDetectedConfidence ? headDetectedConfidence.toFixed(2) + '%' : 'N/A',
-        'Helmet detection confidence': headCoverConfidence ? headCoverConfidence.toFixed(2) + '%' : 'N/A',
         'Protective vest detected': protectiveVestDetected ? 'true' : 'false',
-        'Protective vest detection confidence': protectiveVestConfidence ? protectiveVestConfidence.toFixed(2) + '%' : 'N/A',
-        'Left hand detected': leftHandDetected ? 'true' : 'false',
-        'Left hand cover detected': leftHandCoverDetected ? 'true' : 'false',
-        'Right hand detected': rightHandDetected ? 'true' : 'false',
-        'Right hand cover detected': rightHandCoverDetected ? 'true' : 'false'
       };
 
       perPersonResults.push(personResult);
