@@ -46,6 +46,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     
     // Save the video temporarily
     fs.writeFileSync(videoPath, videoBuffer);
+    console.log(`Video saved at: ${videoPath}`); // Check if video is saved
 
     // Use ffmpeg to extract frames from the uploaded video
     await extractFrames(videoPath, tempDir);
@@ -54,7 +55,17 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     const ppeData = await analyzePPEInFrames(tempDir);
     
     // Cleanup: Remove the temporary video file
-    fs.unlinkSync(videoPath);
+    if (fs.existsSync(videoPath)) {
+      fs.unlinkSync(videoPath);
+    } else {
+      console.warn(`File not found for deletion: ${videoPath}`);
+    }
+
+    // Remove extracted frames
+    fs.readdirSync(tempDir).forEach(file => {
+      const filePath = path.join(tempDir, file);
+      fs.unlinkSync(filePath);
+    });
 
     // Return PPE detection result
     res.json({ success: true, ppeData });
@@ -85,7 +96,7 @@ const extractFrames = (videoPath, outputFolder) => {
 // Helper function to analyze all extracted frames for PPE detection
 const analyzePPEInFrames = async (folderPath) => {
   const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.png'));
-  const helmetData = [];
+  const ppeData = [];
 
   for (const file of files) {
     const imagePath = path.join(folderPath, file);
@@ -96,19 +107,19 @@ const analyzePPEInFrames = async (folderPath) => {
     try {
       // Analyze the resized image
       const ppeResult = await analyzePPEInImage(resizedImageBuffer);
-      helmetData.push({ file, ppeResult });
+      ppeData.push({ file, ppeResult });
     } catch (error) {
       console.error(`Error detecting PPE in frame ${file}:`, error);
     }
   }
 
-  return helmetData;
+  return ppeData;
 };
 
 // Helper function to resize and compress an image using sharp
 const resizeAndCompressImage = async (imagePath) => {
   let resizedImageBuffer;
-  
+
   try {
     resizedImageBuffer = await sharp(imagePath)
       .resize({ width: 1280 })  // Resize image width to 1280px (adjust as needed)
