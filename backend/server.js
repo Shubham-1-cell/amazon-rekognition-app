@@ -12,9 +12,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Set ffmpeg path for Render (Linux deployment)
-const ffmpegPath = path.join(__dirname, 'bin', 'ffmpeg');
-ffmpeg.setFfmpegPath(ffmpegPath);
+
+ffmpeg.setFfmpegPath('/usr/bin/ffmpeg'); 
+
 
 // Enable CORS for all routes
 app.use(cors());
