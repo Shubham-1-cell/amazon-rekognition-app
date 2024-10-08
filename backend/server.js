@@ -5,8 +5,6 @@ const AWS = require('aws-sdk');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
-
-const ffmpegPath = require('ffmpeg-static');
 const sharp = require('sharp');
 const os = require('os');
 require('dotenv').config();
