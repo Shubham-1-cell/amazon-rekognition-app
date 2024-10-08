@@ -174,6 +174,11 @@ const analyzePPEInImage = async (imageBuffer) => {
         .filter(bp => bp.Name === 'BODY')
         .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'BODY_COVER'));
 
+      const handsDetected = person.BodyParts.some(bp => bp.Name === 'HAND');
+      const glovesDetected = person.BodyParts
+        .filter(bp => bp.Name === 'HAND')
+        .some(bp => bp.EquipmentDetections.some(ed => ed.Type === 'HAND_COVER')); // Add glove check
+
       const personResult = {
         'Person ID': personID,
         'Person detected': (person.Confidence || 0).toFixed(2) + '%',
@@ -182,6 +187,8 @@ const analyzePPEInImage = async (imageBuffer) => {
         'Head detected': headDetected ? 'true' : 'false',
         'Helmet detected': headCoverDetected ? 'true' : 'false',
         'Protective vest detected': protectiveVestDetected ? 'true' : 'false',
+        'Hands detected': handsDetected ? 'true' : 'false',
+        'Gloves detected': glovesDetected ? 'true' : 'false', // Add gloves detection result
       };
 
       perPersonResults.push(personResult);
@@ -196,6 +203,7 @@ const analyzePPEInImage = async (imageBuffer) => {
     throw error;
   }
 };
+
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${port}`);
