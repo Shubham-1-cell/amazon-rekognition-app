@@ -5,7 +5,7 @@ const AWS = require('aws-sdk');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
-const os = require('os');
+
 const ffmpegPath = require('ffmpeg-static');
 const sharp = require('sharp');
 const os = require('os');
@@ -14,9 +14,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-
-// Set the path to the ffmpeg executable
-ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
+// Set ffmpeg path for Render (Linux deployment)
+const ffmpegPath = path.join(__dirname, 'bin', 'ffmpeg');
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 // Enable CORS for all routes
 app.use(cors());
