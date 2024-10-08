@@ -79,8 +79,10 @@ const extractFrames = (videoPath, outputFolder) => {
         console.log('All frames extracted successfully');
         resolve();
       })
-      .on('error', (err) => {
+      .on('error', (err, stdout, stderr) => {
         console.error('Error extracting frames:', err);
+        console.error('FFmpeg stdout:', stdout);
+        console.error('FFmpeg stderr:', stderr);
         reject(err);
       })
       .output(`${outputFolder}/frame-%03d.png`) // Extract frames as frame-001.png, frame-002.png, etc.
@@ -203,7 +205,6 @@ const analyzePPEInImage = async (imageBuffer) => {
     throw error;
   }
 };
-
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${port}`);
