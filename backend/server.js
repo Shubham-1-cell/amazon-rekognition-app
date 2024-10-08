@@ -55,11 +55,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     const ppeData = await analyzePPEInFrames(tempDir);
     
     // Cleanup: Remove the temporary video file
-    if (fs.existsSync(videoPath)) {
-      fs.unlinkSync(videoPath);
-    } else {
-      console.warn(`File not found for deletion: ${videoPath}`);
-    }
+    fs.unlinkSync(videoPath);
 
     // Remove extracted frames
     fs.readdirSync(tempDir).forEach(file => {
