@@ -126,10 +126,23 @@ app.post('/upload', upload.single('video'), async (req, res) => {
       if (err) console.error('Error logging upload:', err);
     });
 
+    // Increment successful requests count
+    const updateSuccessSql = "UPDATE Logs SET successful_requests = successful_requests + 1 WHERE user_id = ? AND action = 'upload'";
+    db.query(updateSuccessSql, [user_id], (err) => {
+      if (err) console.error('Error updating successful requests:', err);
+    });
+
     // Return PPE detection result
     res.json({ success: true, ppeData });
   } catch (error) {
     console.error('Error processing video:', error);
+
+      // Increment failed requests count
+    const updateFailSql = "UPDATE Logs SET failed_requests = failed_requests + 1 WHERE user_id = ? AND action = 'upload'";
+    db.query(updateFailSql, [user_id], (err) => {
+      if (err) console.error('Error updating failed requests:', err);
+    });
+    
     res.status(500).json({ success: false, error: error.message || 'Error processing video' });
   }
 });
