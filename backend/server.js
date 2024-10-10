@@ -8,6 +8,7 @@ const path = require('path');
 const sharp = require('sharp');
 const os = require('os');
 require('dotenv').config();
+const bcrypt = require('bcrypt');
 
 // Import the authentication functions and database connection
 
