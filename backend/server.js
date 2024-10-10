@@ -10,7 +10,7 @@ const os = require('os');
 require('dotenv').config();
 
 // Import the authentication functions and database connection
-const { signup, login } = require('./auth'); 
+
 const db = require('./db');
 
 const app = express();
