@@ -88,10 +88,8 @@ app.post('/signup', signup);
 app.post('/login', login);
 
 
-// Route to upload a video
 app.post('/upload', upload.single('video'), async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-
+  const { token } = req.headers; // Assuming token is passed via headers
   let user_id;
 
   // Verify token and extract user_id
@@ -109,10 +107,19 @@ app.post('/upload', upload.single('video'), async (req, res) => {
   const videoBuffer = req.file.buffer;
 
   try {
-    // Process the video as per your current logic
+    // Process the video (e.g., extract frames)
+    // Make sure to call the extractFrames function and analyze the frames
+    const outputFolder = path.join(os.tmpdir(), 'frames'); // Define the output folder for frames
+    fs.mkdirSync(outputFolder, { recursive: true }); // Create the folder if it doesn't exist
+
+    // Extract frames from the video
+    await extractFrames(videoBuffer, outputFolder);
+
+    // Analyze the extracted frames for PPE detection
+    const ppeData = await analyzePPEInFrames(outputFolder); // This should be defined
 
     // Log the video upload action
-    const logSql = "INSERT INTO Logs (user_id, action, login_time) VALUES (?, ?, NOW())";
+    const logSql = "INSERT INTO Logs (user_id, action, timestamp) VALUES (?, ?, NOW())";
     db.query(logSql, [user_id, 'upload'], (err) => {
       if (err) console.error('Error logging upload:', err);
     });
@@ -124,6 +131,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     res.status(500).json({ success: false, error: error.message || 'Error processing video' });
   }
 });
+
 
 
 // Helper function to extract multiple frames from the video
