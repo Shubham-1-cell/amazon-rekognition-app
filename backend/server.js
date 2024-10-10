@@ -120,11 +120,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     // Analyze the extracted frames for PPE detection
     const ppeData = await analyzePPEInFrames(outputFolder);
 
-    // Log the video upload action
-    const logSql = "INSERT INTO Logs (user_id, action, login_time) VALUES (?, ?, NOW())";
-    db.query(logSql, [user_id, 'upload'], (err) => {
-      if (err) console.error('Error logging upload:', err);
-    });
+    
 
     // Increment successful requests count
     const updateSuccessSql = "UPDATE Logs SET successful_requests = successful_requests + 1 WHERE user_id = ? AND action = 'upload'";
@@ -144,6 +140,12 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     });
     
     res.status(500).json({ success: false, error: error.message || 'Error processing video' });
+
+    // Log the video upload action
+    const logSql = "INSERT INTO Logs (user_id, action, login_time, failed_requests, successful_requests) VALUES (?, ?, NOW())";
+    db.query(logSql, [user_id, 'upload'], (err) => {
+      if (err) console.error('Error logging upload:', err);
+    });
   }
 });
 
