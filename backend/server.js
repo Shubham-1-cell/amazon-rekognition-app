@@ -90,7 +90,8 @@ app.post('/login', login);
 
 // Route to upload a video
 app.post('/upload', upload.single('video'), async (req, res) => {
-  const { token } = req.headers; // Assuming token is passed via headers
+  const token = req.headers['authorization']?.split(' ')[1];
+
   let user_id;
 
   // Verify token and extract user_id
