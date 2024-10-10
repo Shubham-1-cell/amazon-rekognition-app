@@ -69,9 +69,17 @@ const login = async (req, res) => {
     if (!passwordMatch) return res.status(400).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ user_id: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    
+    // Log user login action
+    const logSql = "INSERT INTO Logs (user_id, action, timestamp) VALUES (?, ?, NOW())";
+    db.query(logSql, [user.user_id, 'login'], (err) => {
+      if (err) console.error('Error logging login:', err);
+    });
+
     res.json({ success: true, token });
   });
 };
+
 
 // Route for user signup
 app.post('/signup', signup);
@@ -82,46 +90,40 @@ app.post('/login', login);
 
 // Route to upload a video
 app.post('/upload', upload.single('video'), async (req, res) => {
+  const { token } = req.headers; // Assuming token is passed via headers
+  let user_id;
+
+  // Verify token and extract user_id
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    user_id = decoded.user_id;
+  } catch (err) {
+    return res.status(401).json({ success: false, error: 'Invalid token' });
+  }
+
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'No file uploaded' });
   }
 
   const videoBuffer = req.file.buffer;
-  console.log(`Video uploaded: ${req.file.originalname}`); // Log the video name
 
   try {
-    // Create a temporary directory for processing
-    const tempDir = path.join(os.tmpdir(), 'uploads');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    // Process the video as per your current logic
 
-    const videoPath = path.join(tempDir, req.file.originalname);
-    
-    // Save the video temporarily
-    fs.writeFileSync(videoPath, videoBuffer);
-    console.log(`Video saved at: ${videoPath}`); // Check if video is saved
-
-    // Use ffmpeg to extract frames from the uploaded video
-    await extractFrames(videoPath, tempDir);
-
-    // Analyze all extracted frames for PPE detection
-    const ppeData = await analyzePPEInFrames(tempDir);
-    
-    // Cleanup: Remove the temporary video file
-    fs.unlinkSync(videoPath);
-
-    // Remove extracted frames
-    fs.readdirSync(tempDir).forEach(file => {
-      const filePath = path.join(tempDir, file);
-      fs.unlinkSync(filePath);
+    // Log the video upload action
+    const logSql = "INSERT INTO Logs (user_id, action, timestamp) VALUES (?, ?, NOW())";
+    db.query(logSql, [user_id, 'upload'], (err) => {
+      if (err) console.error('Error logging upload:', err);
     });
 
     // Return PPE detection result
     res.json({ success: true, ppeData });
   } catch (error) {
-    console.error('Error processing video:', error); // Log the error for debugging
+    console.error('Error processing video:', error);
     res.status(500).json({ success: false, error: error.message || 'Error processing video' });
   }
 });
+
 
 // Helper function to extract multiple frames from the video
 const extractFrames = (videoPath, outputFolder) => {
