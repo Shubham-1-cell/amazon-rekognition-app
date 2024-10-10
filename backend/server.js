@@ -97,7 +97,13 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     user_id = decoded.user_id;
   } catch (err) {
+    // Increment failed requests count
+    const updateFailSql = "UPDATE Logs SET failed_requests = failed_requests + 1 WHERE user_id = ? AND action = 'upload'";
+    db.query(updateFailSql, [user_id], (error) => {
+      if (error) console.error('Error updating failed requests:', error);
+    });
     return res.status(401).json({ success: false, error: 'Invalid token' });
+    
   }
 
   if (!req.file) {
