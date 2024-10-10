@@ -111,7 +111,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     // Process the video as per your current logic
 
     // Log the video upload action
-    const logSql = "INSERT INTO Logs (user_id, action, timestamp) VALUES (?, ?, NOW())";
+    const logSql = "INSERT INTO Logs (user_id, action, login_time) VALUES (?, ?, NOW())";
     db.query(logSql, [user_id, 'upload'], (err) => {
       if (err) console.error('Error logging upload:', err);
     });
