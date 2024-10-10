@@ -9,6 +9,9 @@ const sharp = require('sharp');
 const os = require('os');
 require('dotenv').config();
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+
 // Import the authentication functions and database connection
 
 const db = require('./db');
