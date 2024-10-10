@@ -9,6 +9,10 @@ const sharp = require('sharp');
 const os = require('os');
 require('dotenv').config();
 
+// Import the authentication functions and database connection
+const { signup, login } = require('./auth'); 
+const db = require('./db');
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -18,6 +22,8 @@ ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
 
 // Enable CORS for all routes
 app.use(cors());
+app.use(express.json());
+
 
 // Set up Multer for video uploads
 const storage = multer.memoryStorage(); // Use memory storage for uploads
