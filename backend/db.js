@@ -2,8 +2,8 @@ const mysql = require('mysql');
 
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'ppeadmin',
-  password: 'ppeadmin2024',
+  user: 'root',
+  password: 'ppeadmin',
   database: 'ppe_detection_db'
 });
 
