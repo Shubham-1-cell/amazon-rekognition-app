@@ -71,7 +71,7 @@ const login = async (req, res) => {
     const token = jwt.sign({ user_id: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     
     // Log user login action
-    const logSql = "INSERT INTO Logs (user_id, action, timestamp) VALUES (?, ?, NOW())";
+    const logSql = "INSERT INTO Logs (user_id, action, login_time) VALUES (?, ?, NOW())";
     db.query(logSql, [user.user_id, 'login'], (err) => {
       if (err) console.error('Error logging login:', err);
     });
