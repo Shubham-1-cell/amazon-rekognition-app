@@ -137,7 +137,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     const updateFailSql = "UPDATE Logs SET failed_requests = failed_requests + 1 WHERE user_id = ? AND action = 'upload'";
     db.query(updateFailSql, [user_id], (err) => {
       if (err) console.error('Error updating failed requests:', err);
-    });
+    }); 
     
     res.status(500).json({ success: false, error: error.message || 'Error processing video' });
 
